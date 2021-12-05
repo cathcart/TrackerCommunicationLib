@@ -4,4 +4,18 @@
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="BencodeLibRedo" />
+    <None Remove="Microsoft.CSharp" />
+    <None Remove="Interfaces\" />
+    <None Remove="Classes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="BencodeLibRedo" Version="1.0.8009.17862" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Interfaces\" />
+    <Folder Include="Classes\" />
+  </ItemGroup>
 </Project>
