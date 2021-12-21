@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Net;
+using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web;
 using BencodeLibRedo.Interfaces;
 using BitTrackerLib.Classes;
@@ -19,6 +23,8 @@ namespace BitTrackerLib
         private BencodeParser _parser = new BencodeParser();
         private byte[] _peer_id;
         private DateTime _nextTrackerCommunication = DateTime.Now;
+        private bool _isHTTPURL;
+        private int _timeOut = 2*1000;
 
         public TrackerCommunication() { }
 
@@ -61,16 +67,89 @@ namespace BitTrackerLib
 
             _announceUrl = metaInfo["announce"].Export();
 
+            var protocall =_announceUrl.Split(':')[0];
+
+            _isHTTPURL = protocall == "http";
+
             return bytes;
         }
 
-        public IEnumerable<IPeer> GetPeers()
-        {
-            WebClient webClient = new WebClient();
+        //// HttpClient is intended to be instantiated once per application, rather than per-use. See Remarks.
+        //static readonly HttpClient client = new HttpClient();
 
-            webClient.QueryString.Add("info_hash", HttpUtility.UrlEncode(_MetaInfoHash));
-            webClient.QueryString.Add("peer_id", HttpUtility.UrlEncode(_peer_id));
-            string result = webClient.DownloadString(_announceUrl);
+        //static async Task TestHttp(string uri)
+        //{
+        //    // Call asynchronous network methods in a try/catch block to handle exceptions.
+        //    try
+        //    {
+        //        HttpResponseMessage response = await client.GetAsync(uri);
+        //        response.EnsureSuccessStatusCode();
+        //        string responseBody = await response.Content.ReadAsStringAsync();
+        //        // Above three lines can be replaced with new helper method below
+        //        // string responseBody = await client.GetStringAsync(uri);
+
+        //        Console.WriteLine(responseBody);
+        //    }
+        //    catch (HttpRequestException e)
+        //    {
+        //        Console.WriteLine("\nException Caught!");
+        //        Console.WriteLine("Message :{0} ", e.Message);
+        //    }
+        //}
+
+      
+        public async Task<IEnumerable<IPeer>> GetPeers()
+        {
+            
+
+            if(_isHTTPURL == false)
+            {
+                throw new IOException(string.Format("Tracker url invalid, not http\n{0}", _announceUrl));
+            }
+
+            HttpClient client = new HttpClient();
+            CancellationTokenSource s_cts = new CancellationTokenSource();
+            CancellationToken cts = s_cts.Token;
+            //client.DefaultRequestHeaders.Add("User-Agent", "C# App");
+
+            var one = HttpUtility.UrlEncode(_MetaInfoHash);
+            var two = HttpUtility.UrlEncode(Encoding.UTF8.GetString(_MetaInfoHash));
+
+            var uri = new Uri(string.Format("{0}?info_hash={1}&peer_id={2}", _announceUrl, HttpUtility.UrlEncode(_MetaInfoHash), HttpUtility.UrlEncode(_peer_id)));
+            var result = "";
+            //TestHttp(uri);
+
+            s_cts.CancelAfter(_timeOut);
+            Task<HttpResponseMessage> httpResponseTask = client.GetAsync(uri.OriginalString, cts);
+            Console.WriteLine("waiting for mail");
+
+            try
+            {
+                
+                HttpResponseMessage response = await httpResponseTask.ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                result = await response.Content.ReadAsStringAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("\nTasks cancelled: timed out.\n");
+                return new List<IPeer>();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("GET request to http timed out.", e);
+                return new List<IPeer>();
+            }
+            finally
+            {
+                s_cts.Dispose();
+            }
+
+
+            if (result == "")
+            {
+                return new List<IPeer>();
+            }
 
             _parser = new BencodeParser();
 

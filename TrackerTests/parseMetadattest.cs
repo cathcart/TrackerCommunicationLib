@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 using BencodeLibRedo.Interfaces;
 using BitTrackerLib;
@@ -102,12 +105,92 @@ namespace TestProject
         }
 
         [TestMethod]
-        public void GetPeersFromTracker()
+        public async Task GetPeersFromTracker()
         {
             string filepath = "/Users/cathcart/Downloads/debian-live-11.1.0-amd64-cinnamon.iso.torrent";
             var tmp = new TrackerCommunication(filepath);
 
-            var peers = tmp.GetPeers();
+            var peers = await tmp.GetPeers();
         }
+
+        [TestMethod]
+        public async Task NoPeersReturnedFromShitTracker()
+        {
+            string filepath = "/Users/cathcart/Downloads/The.Wheel.of.Time.S01E05.Blood.Calls.Blood.2160p.AMZN.WEB-DL.x265.10bit.HDR10Plus.DDP5.1.Atmos-MZABI[rartv]-[rarbg.to].torrent";
+            var tmp = new TrackerCommunication(filepath);
+
+            var peers = await tmp.GetPeers();
+
+            Assert.AreEqual(peers.Count<IPeer>(), 0);
+
+        }
+
+        
+
+        [TestMethod]
+        public async Task InvalidTrackerProtocall()
+        {
+            string filepath = "/Users/cathcart/Downloads/60CAC4AB2E2B1EFC6A4742BB740B21761E36D7C0.torrent";
+            var tmp = new TrackerCommunication(filepath);
+
+            Task<IEnumerable<IPeer>> GetPeersTask = tmp.GetPeers();
+
+            //var peers = await GetPeersTask;
+
+            //Assert.ThrowsException<IOException>(() => GetPeersTask);
+            Assert.ThrowsExceptionAsync<IOException>(() => GetPeersTask);
+
+        }
+
+
+        //[TestMethod]
+        //public async Task AsyncTest()
+        //{
+        //    Task<bool> longRunningTask = ReturnBoolAsync(10000);
+        //    // independent work which doesn't need the result of LongRunningOperationAsync can be done here
+        //    Console.WriteLine("waiting");
+        //    //and now we call await on the task 
+        //    bool result = await longRunningTask;
+
+        //    var hostname = Dns.GetHostName();
+        //    var asyncName = Dns.GetHostEntryAsync(Dns.GetHostName()).GetAwaiter().GetResult().AddressList[0];
+
+        //    var client1 = new HttpClient();
+        //    var uriString = "http://www.google.com";
+        //    //Task<HttpResponseMessage> httpWait1 = client1.GetAsync(uriString);
+
+        //    var client2 = new HttpClient();
+        //    //uriString = "https://nope.porn/";
+
+        //    IPAddress[] addresslist = Dns.GetHostAddresses(uriString);
+
+        //    //Task<HttpResponseMessage> httpWait2 = client2.GetAsync(uriString);
+
+        //    //var code = await httpWait1;
+        //    //var code2 = await httpWait2;
+
+        //    //use the result 
+        //    Console.WriteLine(result);
+        //}
+
+        //private async Task<bool> ReturnBoolAsync(int waitTime)
+        //{
+        //    await Task.Delay(waitTime); // 1 second delay
+        //    return true;
+        //}
+
+        //[TestMethod]
+        //public async Task IP()
+        //{
+        //    var client2 = new System.Net.Http.HttpClient();
+        //    var uriString = "http://www.google.com";
+        //    uriString = "https://www.nope.porn/";
+
+        //    Task<HttpResponseMessage> httpWait2 = client2.GetAsync(uriString);
+        //    var code2 = await httpWait2;
+
+        //    Console.WriteLine(code2.StatusCode);
+        //    Console.WriteLine(code2.Headers);
+        //}
     }
 }
